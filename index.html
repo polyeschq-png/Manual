@@ -170,7 +170,7 @@ filters.innerHTML=cats.map(function(c,i){return '<button class="chip'+(i===0?' o
 filters.addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;
   activeCat=b.getAttribute('data-c');
   filters.querySelectorAll('.chip').forEach(function(x){x.classList.toggle('on',x===b);});
-  render();});
+  render();ftSearch(q.value);});
 q.addEventListener('input',function(){keyword=q.value.trim().toLowerCase();render();ftSearch(q.value);});
 
 // ---- 본문 전체 검색 (SEARCH_INDEX 사용) ----
@@ -185,7 +185,14 @@ function ftSearch(kw){
   kw=kw.trim();
   if(typeof SEARCH_INDEX==='undefined' || kw.length<2){ box.style.display='none'; box.innerHTML=''; return; }
   var low=kw.toLowerCase(), hits=[];
+  // 선택된 분류의 교재만 검색 (전체 선택 시 모든 교재)
+  var allowed=null;
+  if(activeCat!=='전체'){
+    allowed={};
+    MATERIALS.forEach(function(m){ if(m.category===activeCat) allowed[m.title]=1; });
+  }
   SEARCH_INDEX.forEach(function(e){
+    if(allowed && !allowed[e.b]) return;
     var inTitle=e.t.toLowerCase().indexOf(low)>-1;
     var px=e.x.toLowerCase().indexOf(low);
     if(!inTitle && px<0) return;
@@ -196,12 +203,12 @@ function ftSearch(kw){
     hits.push({e:e,snip:snip,rank:(inTitle?0:1)});
   });
   if(!hits.length){ box.style.display='block';
-    box.innerHTML='<div class="ft-head">🔎 “'+escHtml(kw)+'” 본문 검색 결과 없음</div>'; return; }
+    box.innerHTML='<div class="ft-head">🔎 “'+escHtml(kw)+'” '+(activeCat!=='전체'?'['+escHtml(activeCat)+'] ':'')+'본문 검색 결과 없음'+(activeCat!=='전체'?' — 분류를 [전체]로 바꿔 다시 찾아보세요':'')+'</div>'; return; }
   hits.sort(function(a,b){return a.rank-b.rank;});
   // 교재별로 묶어서 표시 (각 교재 최대 7곳)
   var byBook={}, order=[];
   hits.forEach(function(h){ if(!byBook[h.e.b]){byBook[h.e.b]=[];order.push(h.e.b);} byBook[h.e.b].push(h); });
-  var html='<div class="ft-head">🔎 “'+escHtml(kw)+'” 본문 검색 결과 '+hits.length+'곳 · 교재 '+order.length+'권</div>';
+  var html='<div class="ft-head">🔎 “'+escHtml(kw)+'” '+(activeCat!=='전체'?'['+escHtml(activeCat)+'] ':'')+'본문 검색 결과 '+hits.length+'곳 · 교재 '+order.length+'권</div>';
   order.forEach(function(bname){
     var list=byBook[bname], CAP=7;
     list.slice(0,CAP).forEach(function(h){
