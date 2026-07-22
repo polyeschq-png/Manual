@@ -206,6 +206,8 @@ table.tbl tbody tr:nth-child(even){background:#f8f9fc}
 table.tbl td.l,table.tbl th.l{text-align:left}
 table.tbl td.k{background:#f1f4fa;font-weight:700;color:#2c3345}
 table.tbl .em{color:var(--red);font-weight:800}
+table.tbl td.c1{background:#edf3fc}
+table.tbl td.c2{background:#eaf5ea}
 .tbl-cap{font-size:13px;color:var(--muted);margin:2px 2px 6px;font-weight:600}
 
 /* figures */
@@ -213,6 +215,7 @@ table.tbl .em{color:var(--red);font-weight:800}
 .figure img{display:block;width:100%;height:auto}
 .figure figcaption{padding:8px 14px;font-size:12.5px;color:var(--muted);background:#f6f8fc;border-top:1px solid var(--line);font-weight:600}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.two>*{min-width:0}
 .two.narrow{grid-template-columns:1.15fr .85fr}
 
 .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
@@ -605,44 +608,31 @@ details.fig-old img{display:block;width:100%;height:auto}
       </ul>
 
       <div class="subhead"><span class="tag">3-2</span><h3>경조사</h3></div>
-      <div class="two">
-        <div>
-          <p class="tbl-cap">정규직</p>
-          <div class="tbl-wrap"><table class="tbl">
-            <thead><tr><th>구분</th><th>대상</th><th>경조금</th><th>휴가<br>(공휴일 포함)</th></tr></thead>
-            <tbody>
-              <tr><td class="k" rowspan="3">결혼<br>[입사 후 1회 한정]</td><td>본인</td><td>300,000</td><td>7일</td></tr>
-              <tr><td>자녀</td><td>200,000</td><td>1일</td></tr>
-              <tr><td>본인의 형제자매</td><td>-</td><td>1일</td></tr>
-              <tr><td class="k" rowspan="6">사망</td><td>본인</td><td>3,000,000</td><td>-</td></tr>
-              <tr><td>배우자</td><td>1,000,000</td><td>7일</td></tr>
-              <tr><td>자녀</td><td>1,000,000</td><td>7일</td></tr>
-              <tr><td>본인/배우자의 부모</td><td>500,000</td><td>5일</td></tr>
-              <tr><td>본인/배우자의 조부모</td><td>-</td><td>1일</td></tr>
-              <tr><td>본인/배우자의 형제자매</td><td>-</td><td>3일</td></tr>
-              <tr><td class="k" rowspan="2">출산</td><td>본인/배우자</td><td>100,000</td><td class="l">본인 : 출산 전후 최대 90일 (다태아 120일)</td></tr>
-              <tr><td></td><td></td><td class="l">배우자 : 20일 (’25.02.23 개정)</td></tr>
-            </tbody></table></div>
-        </div>
-        <div>
-          <p class="tbl-cap">정규직 外 (원어민교사·안전교사·환경미화·셔틀기사)</p>
-          <div class="tbl-wrap"><table class="tbl">
-            <thead><tr><th>구분</th><th>대상</th><th>경조금</th></tr></thead>
-            <tbody>
-              <tr><td class="k" rowspan="3">결혼</td><td>본인</td><td>100,000</td></tr>
-              <tr><td>자녀</td><td>100,000</td></tr>
-              <tr><td>본인의 형제자매</td><td>-</td></tr>
-              <tr><td class="k" rowspan="6">사망</td><td>본인</td><td>200,000</td></tr>
-              <tr><td>배우자</td><td>100,000</td></tr>
-              <tr><td>자녀</td><td>100,000</td></tr>
-              <tr><td>본인/배우자의 부모</td><td>100,000</td></tr>
-              <tr><td>본인/배우자의 조부모</td><td>-</td></tr>
-              <tr><td>본인/배우자의 형제자매</td><td>-</td></tr>
-              <tr><td class="k">출산</td><td>본인/배우자</td><td>100,000</td></tr>
-            </tbody></table></div>
-          <div class="callout note" style="margin-top:10px"><div class="ct">화환</div><p>사망 시 3단 화환 지급 (결혼·출산은 지급 없음)</p></div>
-        </div>
-      </div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th colspan="2">구분</th><th>대상</th><th>경조금</th><th>구분</th><th>대상</th><th>경조금</th><th>화환</th><th>휴가<br>(공휴일 포함)</th></tr></thead>
+        <tbody>
+          <tr><td class="k" rowspan="3">결혼<br>[입사 후<br>1회 한정]</td><td class="k" rowspan="11">정규직</td>
+              <td class="c1">본인</td><td class="c1">300,000</td>
+              <td class="k" rowspan="11">정규직 外<br>(원어민교사,<br>안전교사,<br>환경미화,<br>셔틀기사)</td>
+              <td class="c2">본인</td><td class="c2">100,000</td>
+              <td rowspan="3">지급 없음</td><td>7일</td></tr>
+          <tr><td class="c1">자녀</td><td class="c1">200,000</td><td class="c2">자녀</td><td class="c2">100,000</td><td>1일</td></tr>
+          <tr><td class="c1">본인의 형제자매</td><td class="c1">-</td><td class="c2">본인의 형제자매</td><td class="c2">-</td><td>1일</td></tr>
+          <tr><td class="k" rowspan="6">사망</td>
+              <td class="c1">본인</td><td class="c1">3,000,000</td>
+              <td class="c2">본인</td><td class="c2">200,000</td>
+              <td rowspan="6">3단 화환</td><td>-</td></tr>
+          <tr><td class="c1">배우자</td><td class="c1">1,000,000</td><td class="c2">배우자</td><td class="c2">100,000</td><td>7일</td></tr>
+          <tr><td class="c1">자녀</td><td class="c1">1,000,000</td><td class="c2">자녀</td><td class="c2">100,000</td><td>7일</td></tr>
+          <tr><td class="c1">본인/배우자의 부모</td><td class="c1">500,000</td><td class="c2">본인/배우자의 부모</td><td class="c2">100,000</td><td>5일</td></tr>
+          <tr><td class="c1">본인/배우자의 조부모</td><td class="c1">-</td><td class="c2">본인/배우자의 조부모</td><td class="c2">-</td><td>1일</td></tr>
+          <tr><td class="c1">본인/배우자의 형제자매</td><td class="c1">-</td><td class="c2">본인/배우자의 형제자매</td><td class="c2">-</td><td>3일</td></tr>
+          <tr><td class="k" rowspan="2">출산</td>
+              <td class="c1" rowspan="2">본인/배우자</td><td class="c1" rowspan="2">100,000</td>
+              <td class="c2" rowspan="2">본인/배우자</td><td class="c2" rowspan="2">100,000</td>
+              <td rowspan="2">-</td><td>출산 전후 최대 90일<br>(다태아 120일)</td></tr>
+          <tr><td>20일 (’25.02.23 개정)</td></tr>
+        </tbody></table></div>
       <ul class="dot">
         <li>경조사에 따른 지원금은 <b>정규직 관리자 및 한국인</b>에 한함</li>
         <li>경조 휴가일수는 공휴일이 포함된 일수 / 결혼은 입사 후 발생 기준 1회 지급</li>
