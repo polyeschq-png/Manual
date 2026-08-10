@@ -64,6 +64,8 @@ a{color:inherit;text-decoration:none}
   color:#d9ccf3;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;
 }
 .book-tag b{color:#fff;font-weight:800}
+.home-link{display:block;margin:2px 18px 6px;padding:7px 12px;border-radius:8px;color:#9fb2d6;font-size:12.5px;font-weight:700}
+.home-link:hover{background:rgba(255,255,255,.08);color:#fff}
 .toc{overflow-y:auto;padding:8px 12px 26px;flex:1;scrollbar-width:thin}
 .toc::-webkit-scrollbar{width:8px}
 .toc::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:8px}
@@ -211,6 +213,7 @@ table.tbl .em{color:var(--red);font-weight:800}
 .figure img{display:block;width:100%;height:auto}
 .figure figcaption{padding:8px 14px;font-size:12.5px;color:var(--muted);background:#f6f8fc;border-top:1px solid var(--line);font-weight:600}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.two>*{min-width:0}
 .two.narrow{grid-template-columns:1.15fr .85fr}
 
 .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
@@ -302,6 +305,14 @@ table.cal td .tag.e{background:#e7edfb;color:var(--blue-ink)}
 .fmt-group{display:none;gap:5px;align-items:center;border-left:1px solid var(--line);padding-left:8px;margin-left:2px;flex-wrap:wrap}
 body.editing .fmt-group{display:flex}
 .btn.fmt{padding:6px 9px;font-size:13px;min-width:34px;justify-content:center}
+/* ===== 읽기 전용 잠금: 관리자 인증 전에는 편집 기능 숨김 ===== */
+body:not(.admin) .edit-tools,
+body:not(.admin) .fmt-group,
+body:not(.admin) .editing-hint,
+body:not(.admin) .abar-btns,
+body:not(.admin) .attach-ctl .btn:not([data-open]),
+body:not(.admin) .attach-ctl .hint{display:none !important}
+#btnLock.on{background:var(--tip);color:#fff;border-color:var(--tip)}
 body.editing [data-edit]{outline:2px dashed #9db4e8;outline-offset:4px;border-radius:8px}
 body.editing [data-edit]:focus{outline:2px solid var(--blue-2)}
 .editing-hint{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:44;background:#0a1b3d;color:#fff;
@@ -434,6 +445,7 @@ details.fig-old img{display:block;width:100%;height:auto}
   </div>
   <!-- 교육책 확장 지점: 다른 교재 추가 시 아래 book-tag를 복제하고 새 chapter 블록을 추가하세요 -->
   <div class="book-tag">📘 <span><b>원장 매뉴얼</b> · <span class="rev-date" data-revfmt="dot">2026.08.04</span></span></div>
+  <a class="home-link" href="index.html">← 교육 자료실 목록</a>
   <nav class="toc" id="toc"><a class="ch active" href="#ch01"><span class="num">01</span><span>인사 기본 절차</span></a><a class="ch" href="#ch03"><span class="num">02</span><span>인사 기본 규정</span></a><a class="ch" href="#ch04"><span class="num">03</span><span>근로계약서</span></a><a class="ch" href="#ch06"><span class="num">04</span><span>사직서 / 비밀준수서약서</span></a><a class="ch" href="#ch07"><span class="num">05</span><span>그룹웨어 전자결재</span></a><a class="ch" href="#ch08"><span class="num">06</span><span>급여 등 관련 업무 절차</span></a><a class="ch" href="#ch12"><span class="num">07</span><span>모성보호 제도 안내</span></a><a class="ch" href="#ch13"><span class="num">08</span><span>모성보호 상세 신청 절차</span></a></nav>
   <div class="side-foot">㈜폴리이에스씨 인사팀<br>본 자료는 내부 교육용입니다.</div>
 </aside>
@@ -443,6 +455,8 @@ details.fig-old img{display:block;width:100%;height:auto}
 <div class="topbar">
   <button class="hamburger" id="hamburger" aria-label="메뉴">☰</button>
   <div class="crumb" id="crumb"><b>01.</b> 인사 기본 절차</div>
+  <a class="btn" href="index.html" title="교육 자료실 목록으로">🏠 자료실</a>
+  <button class="btn" id="btnLock">🔒 관리자</button>
   <button class="btn" onclick="window.print()">🖨 인쇄 / PDF</button>
 </div>
 
@@ -1419,6 +1433,34 @@ window.__recalcMonth=recalcMonth;
     btnEdit.textContent = on?'✏️ 편집 끄기':'✏️ 편집';
   }
   btnEdit.onclick=function(){ setEdit(!editing); };
+
+  // ===== 관리자 잠금 : 비밀번호를 알아야 편집 기능이 보임 =====
+  var ADMIN_HASH='55f240227e224c9f6044819371d76911f71945d4caa881292620082c38a29711';
+  function isAdmin(){ try{ return sessionStorage.getItem('polyesc_admin')==='1'; }catch(e){ return false; } }
+  function applyAdminUI(){
+    document.body.classList.toggle('admin', isAdmin());
+    var lb=document.getElementById('btnLock');
+    if(lb){ lb.textContent = isAdmin()? '🔓 잠그기' : '🔒 관리자'; lb.classList.toggle('on', isAdmin()); }
+  }
+  document.getElementById('btnLock').onclick=function(){
+    if(isAdmin()){
+      if(editing) setEdit(false);
+      try{ sessionStorage.removeItem('polyesc_admin'); }catch(e){}
+      applyAdminUI(); toast('읽기 전용으로 잠갔습니다');
+      return;
+    }
+    var pw=prompt('관리자 비밀번호를 입력하세요'); if(!pw) return;
+    try{
+      crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw)).then(function(buf){
+        var hex=Array.prototype.map.call(new Uint8Array(buf), function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+        if(hex===ADMIN_HASH){
+          try{ sessionStorage.setItem('polyesc_admin','1'); }catch(e){}
+          applyAdminUI(); toast('관리자 모드 — 편집 기능이 열렸습니다');
+        } else { alert('비밀번호가 올바르지 않습니다.'); }
+      });
+    }catch(e){ alert('이 브라우저에서는 인증을 사용할 수 없습니다.'); }
+  };
+  applyAdminUI();
 
   // 서식 버튼: 글자 선택 후 굵게/밑줄/색/형광
   var fmtGroup=document.getElementById('fmtGroup');
