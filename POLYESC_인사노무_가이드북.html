@@ -313,6 +313,27 @@ body:not(.admin) .abar-btns,
 body:not(.admin) .attach-ctl .btn:not([data-open]),
 body:not(.admin) .attach-ctl .hint{display:none !important}
 #btnLock.on{background:var(--tip);color:#fff;border-color:var(--tip)}
+/* ===== 변경 이력 뷰어 ===== */
+#btnLog{display:none}
+body.admin #btnLog{display:inline-flex}
+.lg-ov{position:fixed;inset:0;z-index:120;background:rgba(8,14,30,.55)}
+.lg-box{position:absolute;top:36px;bottom:36px;left:50%;transform:translateX(-50%);width:min(780px,94vw);background:#fff;border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.lg-head{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line);background:#f7f9fc;font-weight:800;color:var(--blue-ink)}
+.lg-head .sp{flex:1}
+.lg-body{flex:1;overflow:auto;padding:14px 18px}
+.lg-ent{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.lg-meta{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:4px}
+.lg-memo{font-size:13px;font-weight:800;color:var(--blue-ink);margin-bottom:6px}
+.lg-it{font-size:13px;margin:4px 0;line-height:1.6}
+.lg-k{display:inline-block;font-size:11px;font-weight:800;border-radius:5px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.lg-k.add{background:#eefaf5;color:#0c7a5f}
+.lg-k.mod{background:#e7edfb;color:#1657c8}
+.lg-k.del{background:#fdecec;color:#c0392b}
+.lg-w{font-weight:800;color:#33415c}
+.lg-ba{color:#6a7180}
+.lg-ba b{color:#232733;font-weight:700}
+.lg-empty{color:var(--muted);text-align:center;padding:40px 0}
+@media print{.lg-ov,#btnLog{display:none!important}}
 body.editing [data-edit]{outline:2px dashed #9db4e8;outline-offset:4px;border-radius:8px}
 body.editing [data-edit]:focus{outline:2px solid var(--blue-2)}
 .editing-hint{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:44;background:#0a1b3d;color:#fff;
@@ -457,6 +478,7 @@ details.fig-old img{display:block;width:100%;height:auto}
   <div class="crumb" id="crumb"><b>01.</b> 인사 기본 절차</div>
   <a class="btn" href="index.html" title="교육 자료실 목록으로">🏠 자료실</a>
   <button class="btn" id="btnLock">🔒 관리자</button>
+  <button class="btn" id="btnLog" title="변경 이력 보기">📋 이력</button>
   <button class="btn" onclick="window.print()">🖨 인쇄 / PDF</button>
 </div>
 
@@ -1262,6 +1284,7 @@ details.fig-old img{display:block;width:100%;height:auto}
   <button class="btn" id="btnReset">↺ 초기화</button>
 </div>
 <div class="editing-hint">편집 모드 · 글자를 고치거나, 드래그로 선택 후 <b>가</b>(굵게)·색·🖍(형광)을 적용하세요. 다 되면 <b>💾 저장</b>으로 파일을 내려받아 올리면 반영됩니다.</div>
+<script type="application/json" id="chlogData">[{"at": "2026.11.13 18:00", "who": "Claude (인사팀 요청)", "memo": "", "items": [{"k": "추가", "w": "편집 기능", "a": "블록 삽입(소제목·표·목록·단계·참고/주의)·블록 이동/삭제·표 행/열 도구"}, {"k": "추가", "w": "변경 이력", "a": "저장 시 자동 전후 비교 기록 + 📋 이력 뷰어"}]}]</script>
 <div class="toast" id="toast">수정본 파일을 저장했습니다 · 기존 파일을 이 파일로 교체하세요</div>
 
 <script>
@@ -2015,6 +2038,123 @@ function promptUrl(){
 
 // 최초 자동 계산
 recalcMonth();
+
+// ===================================================================
+// 변경 이력 : 저장 시 블록 단위 전후 자동 비교 → 파일 내장 기록 (v2026-11)
+// ===================================================================
+(function(){
+  var LT=String.fromCharCode(60), BS=String.fromCharCode(92);
+  function toast(msg){ var t=document.getElementById('toast'); if(!t)return; t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2400); }
+  function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function chRead(){ var el=document.getElementById('chlogData'); if(!el) return []; try{ return JSON.parse(el.textContent||'[]'); }catch(e){ return []; } }
+  function chWrite(arr){ var el=document.getElementById('chlogData'); if(!el) return;
+    el.textContent=JSON.stringify(arr).split(LT).join(BS+'u003c'); }
+  function nowStr(){ var d=new Date(); function z(x){return ('0'+x).slice(-2);}
+    return d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes()); }
+  function cap(t){ t=t||''; return t.length>90? t.slice(0,90)+'…' : t; }
+  function midB(b,a,which){
+    var p=0; while(p<b.length && p<a.length && b.charAt(p)===a.charAt(p)) p++;
+    var s=0; while(s<b.length-p && s<a.length-p && b.charAt(b.length-1-s)===a.charAt(a.length-1-s)) s++;
+    var t=which==='b'? b : a;
+    var st=Math.max(0,p-15), en=Math.min(t.length, t.length-s+15);
+    if(en<=st) en=Math.min(t.length, st+30);
+    return (st>0?'…':'')+cap(t.slice(st,en))+(en<t.length?'…':'');
+  }
+  function blocksOf(region){
+    var sec=region.closest('.chapter');
+    var base= sec? (sec.getAttribute('data-title')||'본문') : (region.classList.contains('intro')?'소개':'문서 하단');
+    var out=[], loc=base;
+    for(var el=region.firstElementChild; el; el=el.nextElementSibling){
+      var t=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if((el.className||'').indexOf('subhead')>-1 && t) loc=t.slice(0,28);
+      out.push({text:t, loc:loc});
+    }
+    return out;
+  }
+  function diffBlocks(A,B){
+    var n=A.length, m=B.length, i, j;
+    var dp=[]; for(i=0;i<=n;i++){ dp.push(new Array(m+1)); for(j=0;j<=m;j++) dp[i][j]=0; }
+    for(i=n-1;i>=0;i--) for(j=m-1;j>=0;j--)
+      dp[i][j] = A[i].text===B[j].text ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+    var items=[], dels=[], adds=[];
+    function flush(){
+      while(dels.length && adds.length){
+        var d=dels.shift(), a=adds.shift();
+        if(d.text===a.text) continue;
+        items.push({k:'수정', w:a.loc||d.loc, b:midB(d.text,a.text,'b'), a:midB(d.text,a.text,'a')});
+      }
+      while(dels.length){ var d2=dels.shift(); if(d2.text) items.push({k:'삭제', w:d2.loc, b:cap(d2.text)}); }
+      while(adds.length){ var a2=adds.shift(); if(a2.text) items.push({k:'추가', w:a2.loc, a:cap(a2.text)}); }
+    }
+    i=0; j=0;
+    while(i<n && j<m){
+      if(A[i].text===B[j].text){ flush(); i++; j++; }
+      else if(dp[i+1][j]>=dp[i][j+1]) dels.push(A[i++]);
+      else adds.push(B[j++]);
+    }
+    while(i<n) dels.push(A[i++]);
+    while(j<m) adds.push(B[j++]);
+    flush();
+    return items;
+  }
+  var chBase={};
+  function captureBase(){
+    document.querySelectorAll('[data-edit]').forEach(function(rg){
+      chBase[rg.getAttribute('data-edit')]=blocksOf(rg);
+    });
+  }
+  captureBase();
+  window.__chlogRecapture=captureBase;
+
+  function recordDiffs(){
+    var items=[];
+    document.querySelectorAll('[data-edit]').forEach(function(rg){
+      var base=chBase[rg.getAttribute('data-edit')]; if(!base) return;
+      items=items.concat(diffBlocks(base, blocksOf(rg)));
+    });
+    if(!items.length) return;
+    var memo='';
+    try{ memo=window.prompt('변경 메모(선택) — 비워도 자동 기록은 남습니다','')||''; }catch(e){}
+    var arr=chRead();
+    arr.push({at:nowStr(), who:'관리자 직접 수정', memo:memo.trim(), items:items.slice(0,80)});
+    chWrite(arr);
+    captureBase();
+    toast('변경 '+items.length+'건이 이력에 기록되었습니다');
+  }
+  var _sv=document.getElementById('btnSave');
+  if(_sv){
+    var _orig=_sv.onclick;
+    _sv.onclick=function(ev){ try{ recordDiffs(); }catch(e){} if(_orig) return _orig.call(this, ev); };
+  }
+
+  // 📋 이력 뷰어
+  function openLog(){
+    var old=document.getElementById('lgOv'); if(old) old.remove();
+    var arr=chRead().slice().reverse();
+    var body='';
+    if(!arr.length) body='<div class="lg-empty">아직 기록된 변경 이력이 없습니다.</div>';
+    arr.forEach(function(en){
+      var its='';
+      (en.items||[]).forEach(function(it){
+        var cls= it.k==='추가'?'add':(it.k==='삭제'?'del':'mod');
+        var ba='';
+        if(it.k==='수정') ba=' <span class="lg-ba"><b>'+esc(it.b||'')+'</b> → <b>'+esc(it.a||'')+'</b></span>';
+        else if(it.k==='추가') ba=' <span class="lg-ba"><b>'+esc(it.a||'')+'</b></span>';
+        else ba=' <span class="lg-ba"><b>'+esc(it.b||'')+'</b></span>';
+        its+='<div class="lg-it"><span class="lg-k '+cls+'">'+it.k+'</span><span class="lg-w">'+esc(it.w||'')+'</span>'+ba+'</div>';
+      });
+      body+='<div class="lg-ent"><div class="lg-meta">'+esc(en.at||'')+' · '+esc(en.who||'')+'</div>'
+          +(en.memo? '<div class="lg-memo">“'+esc(en.memo)+'”</div>':'')
+          +its+'</div>';
+    });
+    var ov=document.createElement('div'); ov.className='lg-ov'; ov.id='lgOv';
+    ov.innerHTML='<div class="lg-box"><div class="lg-head">📋 변경 이력 ('+arr.length+'건)<span class="sp"></span><button type="button" class="figbtn" id="lgClose">✕ 닫기</button></div><div class="lg-body">'+body+'</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov || e.target.closest('#lgClose')) ov.remove(); });
+  }
+  var _lb=document.getElementById('btnLog');
+  if(_lb) _lb.onclick=openLog;
+})();
 </script>
 
 
