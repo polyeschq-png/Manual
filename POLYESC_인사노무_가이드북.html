@@ -1241,6 +1241,23 @@ details.fig-old img{display:block;width:100%;height:auto}
     <button class="btn fmt" data-hl="#fff3a6" title="형광펜">🖍</button>
     <button class="btn fmt" data-cmd="removeFormat" title="서식 지우기">⌫ 서식</button>
   </span>
+  <span class="fmt-group" id="insGroup">
+    <button class="btn fmt" data-ins="sub" title="소제목 추가 (번호 자동)">＋소제목</button>
+    <button class="btn fmt" data-ins="tbl" title="표 추가">＋표</button>
+    <button class="btn fmt" data-ins="ul" title="글머리 목록 추가">＋목록</button>
+    <button class="btn fmt" data-ins="ol" title="번호 단계 추가">＋단계</button>
+    <button class="btn fmt" data-ins="note" title="파란 참고 박스">＋참고</button>
+    <button class="btn fmt" data-ins="warn" title="빨간 주의 박스">＋주의</button>
+    <button class="btn fmt" data-ins="up" title="선택한 블록을 위로">▲</button>
+    <button class="btn fmt" data-ins="down" title="선택한 블록을 아래로">▼</button>
+    <button class="btn fmt" data-ins="del" title="선택한 블록 삭제">✕블록</button>
+  </span>
+  <span class="fmt-group" id="tblGroup">
+    <button class="btn fmt" data-tbl="row+" title="현재 행 아래에 행 추가">행＋</button>
+    <button class="btn fmt" data-tbl="row-" title="현재 행 삭제">행－</button>
+    <button class="btn fmt" data-tbl="col+" title="현재 열 오른쪽에 열 추가">열＋</button>
+    <button class="btn fmt" data-tbl="col-" title="현재 열 삭제">열－</button>
+  </span>
   <button class="btn" id="btnSave">💾 저장(파일 내보내기)</button>
   <button class="btn" id="btnReset">↺ 초기화</button>
 </div>
@@ -1496,6 +1513,152 @@ window.__recalcMonth=recalcMonth;
     fig.scrollIntoView({block:'center',behavior:'smooth'});
     toast('자료칸 추가됨 — 왼쪽 라벨 글자를 클릭해 이름을 바꾸고, 📎/🔗로 자료를 연결하세요');
   };
+
+  // ===== 편집 고도화 : 블록 삽입·이동·삭제 / 표 행·열 (v2026-11) =====
+  function _curCtx(){
+    var sel=window.getSelection();
+    var node=sel && sel.anchorNode ? (sel.anchorNode.nodeType===1? sel.anchorNode : sel.anchorNode.parentElement) : null;
+    var region=node ? node.closest('[data-edit]') : null;
+    if(!region) return null;
+    var blk=node;
+    while(blk && blk.parentElement!==region) blk=blk.parentElement;
+    return {region:region, blk:blk};
+  }
+  function _placeCursor(el){
+    try{ var r=document.createRange(); r.selectNodeContents(el); r.collapse(true);
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }catch(e){}
+  }
+  function _insertBlock(html, focusSel){
+    if(!editing){ setEdit(true); toast('편집 모드를 켰습니다 — 넣을 위치를 클릭한 뒤 다시 누르세요'); return null; }
+    var c=_curCtx();
+    if(!c){ toast('본문에서 넣을 위치를 먼저 클릭하세요'); return null; }
+    var tmp=document.createElement('div'); tmp.innerHTML=html;
+    var el=tmp.firstElementChild;
+    if(c.blk && c.blk.nextSibling) c.region.insertBefore(el, c.blk.nextSibling);
+    else c.region.appendChild(el);
+    c.region.dispatchEvent(new Event('input',{bubbles:true}));
+    el.scrollIntoView({block:'center',behavior:'smooth'});
+    if(focusSel){ var f=el.querySelector(focusSel); if(f) _placeCursor(f); }
+    return el;
+  }
+  function _nextTag(region){
+    var sec=region.closest('.chapter'); if(!sec) return null;
+    var cn=sec.querySelector('.cnum'); if(!cn) return null;
+    var n=parseInt(cn.textContent,10); if(!n) return null;
+    var mx=0;
+    sec.querySelectorAll('.subhead .tag').forEach(function(t){
+      var m=/^(\d+)-(\d+)$/.exec(t.textContent.trim());
+      if(m && parseInt(m[1],10)===n) mx=Math.max(mx, parseInt(m[2],10));
+    });
+    return n+'-'+(mx+1);
+  }
+  var _insG=document.getElementById('insGroup');
+  _insG.addEventListener('mousedown', function(e){ if(e.target.closest('button')) e.preventDefault(); });
+  _insG.addEventListener('click', function(e){
+    var b=e.target.closest('button[data-ins]'); if(!b) return;
+    var k=b.getAttribute('data-ins');
+    if(k==='sub'){
+      var c0=_curCtx();
+      if(!c0){ toast('본문에서 넣을 위치를 먼저 클릭하세요'); return; }
+      var tag=_nextTag(c0.region);
+      var tagHtml= tag? '<span class="tag">'+tag+'</span>' : '<span class="tag">●</span>';
+      var idAttr= (tag && !document.getElementById('sec-'+tag)) ? ' id="sec-'+tag+'"' : '';
+      if(_insertBlock('<div class="subhead"'+idAttr+'>'+tagHtml+'<h3>새 소제목</h3></div>','h3'))
+        toast('소제목 추가'+(tag? ' — 번호 자동: '+tag:'')+' · 제목 글자를 바로 고치세요');
+    } else if(k==='tbl'){
+      var spec=prompt('표 크기 — 행x열 (머리글 제외, 예: 3x4)','3x4');
+      if(!spec) return;
+      var m=/^\s*(\d{1,2})\s*[xX*×]\s*(\d{1,2})\s*$/.exec(spec);
+      if(!m){ alert('예: 3x4 형식으로 입력해주세요.'); return; }
+      var R=Math.min(30,parseInt(m[1],10)||1), C=Math.min(12,parseInt(m[2],10)||1);
+      var h='<div class="tbl-wrap"><table class="tbl"><thead><tr>';
+      for(var i=0;i<C;i++) h+='<th>제목'+(i+1)+'</th>';
+      h+='</tr></thead><tbody>';
+      for(var r2=0;r2<R;r2++){ h+='<tr>'; for(var c2=0;c2<C;c2++) h+='<td>&nbsp;</td>'; h+='</tr>'; }
+      h+='</tbody></table></div>';
+      if(_insertBlock(h,'th')) toast('표 추가 — 셀을 클릭해 내용을 입력하세요');
+    } else if(k==='ul'){
+      if(_insertBlock('<ul class="dot"><li>내용을 입력하세요</li></ul>','li')) toast('목록 추가 — 줄 끝에서 Enter 치면 항목이 늘어납니다');
+    } else if(k==='ol'){
+      if(_insertBlock('<ol class="steps"><li>첫 단계 내용을 입력하세요</li></ol>','li')) toast('단계 추가 — 줄 끝에서 Enter 치면 단계가 늘어납니다');
+    } else if(k==='note'){
+      if(_insertBlock('<div class="callout note"><div class="ct">※ 참고</div><p>내용을 입력하세요</p></div>','p')) toast('참고 박스 추가');
+    } else if(k==='warn'){
+      if(_insertBlock('<div class="callout warn"><div class="ct">■ 주의</div><p>내용을 입력하세요</p></div>','p')) toast('주의 박스 추가');
+    } else if(k==='up' || k==='down'){
+      var c1=_curCtx();
+      if(!c1 || !c1.blk){ toast('이동할 블록을 먼저 클릭하세요'); return; }
+      var sib= k==='up' ? c1.blk.previousElementSibling : c1.blk.nextElementSibling;
+      if(!sib){ toast('더 이동할 수 없습니다'); return; }
+      if(k==='up') c1.region.insertBefore(c1.blk, sib);
+      else c1.region.insertBefore(sib, c1.blk);
+      c1.region.dispatchEvent(new Event('input',{bubbles:true}));
+      c1.blk.scrollIntoView({block:'center',behavior:'smooth'});
+    } else if(k==='del'){
+      var c3=_curCtx();
+      if(!c3 || !c3.blk){ toast('삭제할 블록을 먼저 클릭하세요'); return; }
+      var nm=(c3.blk.textContent||'').trim().slice(0,30) || c3.blk.tagName;
+      if(!confirm('이 블록을 삭제할까요? — '+nm)) return;
+      var rg=c3.region; c3.blk.remove();
+      rg.dispatchEvent(new Event('input',{bubbles:true}));
+      toast('블록을 삭제했습니다');
+    }
+  });
+  function _curCell(){
+    var sel=window.getSelection();
+    var n=sel && sel.anchorNode ? (sel.anchorNode.nodeType===1? sel.anchorNode : sel.anchorNode.parentElement) : null;
+    return n ? n.closest('td,th') : null;
+  }
+  var _tblG=document.getElementById('tblGroup');
+  _tblG.addEventListener('mousedown', function(e){ if(e.target.closest('button')) e.preventDefault(); });
+  _tblG.addEventListener('click', function(e){
+    var b=e.target.closest('button[data-tbl]'); if(!b) return;
+    var cell=_curCell();
+    if(!cell || !cell.closest('[data-edit]')){ toast('표 안의 칸을 먼저 클릭하세요'); return; }
+    var tr=cell.closest('tr'), table=cell.closest('table');
+    var region=cell.closest('[data-edit]');
+    var merged=!!table.querySelector('[rowspan],[colspan]');
+    var k=b.getAttribute('data-tbl');
+    if(k==='row+'){
+      var nt=document.createElement('tr');
+      var cnt=0; tr.querySelectorAll('td,th').forEach(function(x){ cnt+=x.colSpan||1; });
+      for(var i=0;i<cnt;i++){ var td=document.createElement('td'); td.innerHTML='&nbsp;'; nt.appendChild(td); }
+      if(tr.parentElement.tagName==='THEAD'){
+        var tb=table.tBodies[0];
+        if(tb) tb.insertBefore(nt, tb.firstChild); else tr.parentElement.appendChild(nt);
+      } else {
+        tr.parentElement.insertBefore(nt, tr.nextSibling);
+      }
+      toast(merged? '행 추가됨 — 병합 셀이 있는 표라 모양을 확인하세요':'행 추가');
+    } else if(k==='row-'){
+      if(tr.parentElement.tagName==='THEAD'){ toast('머리글 행은 지울 수 없습니다'); return; }
+      if(!confirm('이 행을 삭제할까요?')) return;
+      tr.remove();
+      toast('행 삭제');
+    } else if(k==='col+'){
+      if(merged && !confirm('병합 셀이 있는 표라 열 작업이 어긋날 수 있습니다. 진행할까요?')) return;
+      var idx=cell.cellIndex;
+      for(var r3=0;r3<table.rows.length;r3++){
+        var row=table.rows[r3];
+        var ref=row.cells[Math.min(idx,row.cells.length-1)];
+        var nc=document.createElement(ref && ref.tagName==='TH' ? 'th' : 'td');
+        nc.innerHTML= (nc.tagName==='TH') ? '제목' : '&nbsp;';
+        if(ref && ref.nextSibling) row.insertBefore(nc, ref.nextSibling);
+        else row.appendChild(nc);
+      }
+      toast('열 추가');
+    } else if(k==='col-'){
+      if(merged && !confirm('병합 셀이 있는 표라 열 작업이 어긋날 수 있습니다. 진행할까요?')) return;
+      if(!confirm('이 열을 삭제할까요?')) return;
+      var idx2=cell.cellIndex;
+      for(var r4=0;r4<table.rows.length;r4++){
+        var row2=table.rows[r4];
+        if(row2.cells.length>idx2) row2.deleteCell(idx2);
+      }
+      toast('열 삭제');
+    }
+    region.dispatchEvent(new Event('input',{bubbles:true}));
+  });
 
   // 저장 = 수정 반영된 HTML 내보내기
   document.getElementById('btnSave').onclick=function(){
